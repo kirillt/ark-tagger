@@ -1,22 +1,35 @@
-use serde::{Serialize, Deserialize};
-use serde_json::Result;
+#[macro_use]
+extern crate lazy_static;
+
+//use serde::{Serialize, Deserialize};
+//use serde_json::Result;
 
 use crc32fast::Hasher;
 use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::io::Read;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::env;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Entity {
-    id: u32,
-    tags: Vec<String>
+lazy_static! {
+    static ref ROOT: PathBuf =
+        env::current_dir().unwrap()
+            .canonicalize().unwrap();
+
+    static ref DATA: PathBuf = {
+        let mut path = ROOT.clone();
+        path.push(".ark-tags");
+        path
+    };
 }
 
+//#[derive(Serialize, Deserialize, Debug)]
+//struct Entity {
+//    id: u32,
+//    tags: Vec<String>
+//}
+
 fn main() {
-    let root = env::current_dir().unwrap();
-    let root = root.canonicalize().unwrap();
-    println!("Root: {:?}", root);
+    println!("Root: {:?}", *ROOT);
 
     let mut args = env::args();
     args.next();
@@ -27,7 +40,7 @@ fn main() {
     });
     let path = Path::new(&path).canonicalize().unwrap();
     println!("Canonical path: {:?}", path);
-    let path = path.strip_prefix(root).unwrap();
+    let path = path.strip_prefix(&*ROOT).unwrap();
     println!("Relative path: {:?}", path);
 
     let tags: Vec<String> = args.collect();
@@ -36,12 +49,27 @@ fn main() {
         std::process::exit(1);
     }
 
-    let entity = Entity {
-        id: crc32(path),
-        tags
-    };
+    let id: u32 = crc32(path);
+    //let entity = Entity { id, tags };
+    
+    for tag in tags.iter() {
+        label(id, &path, &tag);
+    }
 
-    println!("{:?}", entity);
+    println!("{:?}", id);
+}
+
+fn label(id: u32, target: &Path, tag: &str) {
+    let mut path: PathBuf = DATA.clone();
+    path.push(tag);
+
+    fs::create_dir_all(&path).unwrap();
+    path.push(format!("{}", id));
+
+    let mut ref_file = File::create(&path).unwrap();
+    ref_file.write(
+        target.to_str().unwrap()
+            .as_bytes()).unwrap();
 }
 
 fn crc32(path: &Path) -> u32 {
