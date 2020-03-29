@@ -1,11 +1,18 @@
 #[derive(Debug, Clone)]
 pub enum Message {
-    LocationMessage(LocationMessage),
-    SelectorMessage(SelectorMessage)
+    TaggerMessage(TaggerMessage),
+    SelectorMessage(SelectorMessage),
+    BrowserMessage(BrowserMessage),
 }
 
 #[derive(Debug, Clone)]
-pub enum LocationMessage {
+pub enum TaggerMessage {
+    TaggingActivated,
+    InputChanged(String)
+}
+
+#[derive(Debug, Clone)]
+pub enum BrowserMessage {
     AscendActivated,
     EntryMessage(usize, EntryMessage),
 }

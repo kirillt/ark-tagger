@@ -1,6 +1,5 @@
 use crate::model::{Location, Entry};
-
-use crate::message::{LocationMessage, EntryMessage};
+use crate::message::{BrowserMessage, EntryMessage};
 
 use iced::{
     Element, Row, Column, Length,
@@ -8,10 +7,13 @@ use iced::{
     button, scrollable,
 };
 
+use std::collections::BTreeSet;
+
 pub struct Browser {
-    asc_button: Option<button::State>,
+    pub selection: BTreeSet<usize>,
     entries: Vec<EntryWidget>,
     scroll: scrollable::State,
+    asc_button: Option<button::State>,
 }
 
 impl Browser {
@@ -23,18 +25,26 @@ impl Browser {
         };
 
         Browser {
-            asc_button: asc_button,
-            scroll: scrollable::State::new(),
+            selection: BTreeSet::new(),
             entries: location.entries.iter()
                          .map(|e| EntryWidget::new(&e))
                          .collect(),
+            scroll: scrollable::State::new(),
+            asc_button: asc_button,
         }
     }
 
-    pub fn update(&mut self, msg: LocationMessage) {
-        println!("\tLocationMessage: {:?}", &msg);
+    pub fn update(&mut self, msg: BrowserMessage) {
+        println!("\tBrowserMessage: {:?}", &msg);
         match msg {
-            LocationMessage::EntryMessage(i, msg) => {
+            BrowserMessage::EntryMessage(i, msg) => {
+                match &msg {
+                    EntryMessage::Selected(true) => { self.selection.insert(i); }
+                    EntryMessage::Selected(false) => { self.selection.remove(&i); }
+                    _ => {}
+                };
+                println!("[ Paths selected: {:?} ]", &self.selection);
+
                 if let Some(entry) = self.entries.get_mut(i) {
                     entry.update(msg);
                 }
@@ -43,12 +53,21 @@ impl Browser {
         }
     }
 
-    pub fn view(&mut self) -> Element<LocationMessage> {
+    pub fn view(&mut self) -> Element<BrowserMessage> {
         match self {
-            Browser { asc_button, entries, scroll } => {
-                let button: Element<LocationMessage> = match asc_button {
+            Browser { selection, entries, scroll, asc_button } => {
+                debug_assert!(
+                    entries.iter()
+                        .enumerate().filter_map(|(i, e)| {
+                            if e.selected { Some(i) } else { None }
+                        }).collect::<Vec<usize>>()
+                    == self.selection.iter()
+                        .cloned()
+                        .collect::<Vec<usize>>());
+
+                let button: Element<BrowserMessage> = match asc_button {
                     Some(state) => Button::new(state, Text::new("up"))
-                        .on_press(LocationMessage::AscendActivated)
+                        .on_press(BrowserMessage::AscendActivated)
                         .into(),
                     None => Text::new("You are in the root directory")
                         .into()
@@ -61,7 +80,7 @@ impl Browser {
                         scrollable.push(entry.view()
                             .map(move |msg| {
                                 println!("Location::view(): a message from Entry: {:?}", &msg);
-                                LocationMessage::EntryMessage(i, msg)
+                                BrowserMessage::EntryMessage(i, msg)
                             })));
 
                 Column::new()

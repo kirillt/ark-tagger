@@ -6,8 +6,11 @@ use iced::{Element, Color, Checkbox, Row};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+use std::collections::BTreeSet;
+
 pub struct Selector {
-    tags: Vec<TagWidget>
+    tags: Vec<TagWidget>,
+    selection: BTreeSet<usize>
 }
 
 impl Selector {
@@ -17,7 +20,9 @@ impl Selector {
         Selector {
             tags: db.ids_by_tag.keys()
                 .map(|tag| TagWidget::new(tag, &mut hasher))
-                .collect()
+                .collect(),
+
+            selection: BTreeSet::new()
         }
     }
 
@@ -25,6 +30,13 @@ impl Selector {
         println!("\tSelectorMessage: {:?}", &msg);
         match msg {
             SelectorMessage::TagMessage(i, msg) => {
+                match &msg {
+                    TagMessage::Selected(true) => { self.selection.insert(i); },
+                    TagMessage::Selected(false) => { self.selection.remove(&i); },
+                    _ => {}
+                };
+                println!("[ Tags selected: {:?} ]", &self.selection);
+
                 if let Some(tag) = self.tags.get_mut(i) {
                     tag.update(msg);
                 }
@@ -34,11 +46,20 @@ impl Selector {
     }
 
     pub fn view(&mut self) -> Element<SelectorMessage> {
+        debug_assert!(
+            self.tags.iter()
+                .enumerate().filter_map(|(i, t)| {
+                    if t.selected { Some(i) } else { None }
+                }).collect::<Vec<usize>>()
+            == self.selection.iter()
+                .cloned()
+                .collect::<Vec<usize>>());
+
         self.tags
             .iter_mut()
             .enumerate()
-            .fold(Row::new(), |row, (i, entry)|
-                row.push(entry.view()
+            .fold(Row::new(), |row, (i, tag)|
+                row.push(tag.view()
                     .map(move |msg| {
                         println!("Selector::view(): a message from Tag: {:?}", &msg);
                         SelectorMessage::TagMessage(i, msg)
