@@ -3,6 +3,7 @@ mod model;
 mod query;
 mod action;
 mod message;
+mod style;
 
 #[macro_use]
 extern crate lazy_static;
