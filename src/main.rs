@@ -34,7 +34,7 @@ fn main() {
     println!("Root: {:?}", *ROOT);
     app::RootWidget::run(Settings {
         window: window::Settings {
-            size: (320,480),
+            size: (480,480),
             resizable: true,
             decorations: true
         },

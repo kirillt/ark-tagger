@@ -14,12 +14,17 @@ pub enum TaggerMessage {
 #[derive(Debug, Clone)]
 pub enum BrowserMessage {
     AscendActivated,
-    EntryMessage(usize, EntryMessage),
+    DirMessage(usize, DirMessage),
+    FileMessage(usize, FileMessage),
 }
 
 #[derive(Debug, Clone)]
-pub enum EntryMessage {
+pub enum DirMessage {
     DescendActivated,
+}
+
+#[derive(Debug, Clone)]
+pub enum FileMessage {
     ExecuteActivated,
     Selected(bool)
 }

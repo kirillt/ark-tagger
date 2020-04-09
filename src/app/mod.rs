@@ -4,7 +4,7 @@ mod browser;
 
 use crate::model::Model;
 use crate::model::id::Id;
-use crate::message::{Message, TaggerMessage, BrowserMessage, EntryMessage};
+use crate::message::{Message, TaggerMessage, BrowserMessage, DirMessage};
 
 use tagger::Tagger;
 use selector::Selector;
@@ -44,17 +44,18 @@ impl Application for RootWidget {
         println!("Application::update(): {:?}", &msg);
         match msg {
             Message::TaggerMessage(TaggerMessage::TaggingActivated) => {
-                let selection = &self.browser.selection;
-                let entries = &self.model.location.entries;
-                let tag = self.tagger.text.clone();
+                let selection = self.browser.take_selection();
+                let tag = self.tagger.take_tag();
+
                 println!("\tTagging {:?} with {:?}", selection, tag);
 
-                let mut paths: Vec<Option<PathBuf>> = entries.iter()
+                let file_entries = &self.model.location.files;
+                let mut file_paths: Vec<Option<PathBuf>> = file_entries.iter()
                     .map(|e| Some(e.path.clone()))
                     .collect();
 
                 let ids: HashSet<Id> = selection.clone().into_iter().map(|i| {
-                    let path = paths[i].take().unwrap();
+                    let path = file_paths[i].take().unwrap();
                     println!("\t\t{:?}", &path);
 
                     self.model.index.refresh(path)
@@ -75,7 +76,7 @@ impl Application for RootWidget {
                 self.model.location = self.model.location.ascend(&mut self.model.index);
                 self.browser = Browser::new(&self.model.location);
             },
-            Message::BrowserMessage(BrowserMessage::EntryMessage(i, EntryMessage::DescendActivated)) => {
+            Message::BrowserMessage(BrowserMessage::DirMessage(i, DirMessage::DescendActivated)) => {
                 println!("\tDescending into {}th entry", i);
                 self.model.location = self.model.location.descend(&mut self.model.index, i);
                 self.browser = Browser::new(&self.model.location);

@@ -38,4 +38,10 @@ impl Tagger {
             .push(button)
             .into()
     }
+
+    pub fn take_tag(&mut self) -> String {
+        let result = self.text.clone();
+        self.text = String::new();
+        result
+    }
 }

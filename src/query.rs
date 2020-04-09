@@ -41,7 +41,7 @@ pub fn scan_buckets(path: &Path) -> Vec<Bucket> {
         .collect()
 }
 
-pub fn list_entries(path: &Path) -> impl Iterator<Item = Entry> {
+pub fn list_entries(path: &Path) -> impl Iterator<Item = (bool, Entry)> {
     let prefix_to_strip: Option<&Path> =
         if path.is_absolute() { Some(&ROOT) }
         else { None };
@@ -55,11 +55,9 @@ pub fn list_entries(path: &Path) -> impl Iterator<Item = Entry> {
                 path = path.strip_prefix(root).unwrap().to_path_buf();
             }
 
-            Entry {
-                name: e.file_name().to_str().unwrap().to_owned(),
-                path: path,
-                is_dir: e.file_type().unwrap().is_dir()
-            }
+            let is_dir = e.file_type().unwrap().is_dir();
+            let name = e.file_name().to_str().unwrap().to_owned();
+            (is_dir, Entry { name, path })
         })
 }
 

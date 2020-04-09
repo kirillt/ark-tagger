@@ -116,24 +116,35 @@ impl Database {
 
 pub struct Location {
     pub path: PathBuf,
-    pub entries: Vec<Entry>,
+    pub directories: Vec<Entry>,
+    pub files: Vec<Entry>,
     pub depth: usize
 }
 
 impl Location {
     pub fn new(index: &mut Index, path: &Path, depth: usize) -> Self {
-        let entries: Vec<Entry> = query::list_entries(&path)
-            .filter(|e| e.name != *DATA_NAME
-                    && e.path != *DATA)
-            .collect();
+        let mut directories = vec![];
+        let mut files = vec![];
 
-        for e in entries.iter() {
-            if !e.is_dir {
-                index.refresh(e.path.clone());
+        for (is_dir, entry) in query::list_entries(&path) {
+            if is_dir {
+                directories.push(entry);
+            } else {
+                files.push(entry);
             }
         }
 
-        Location { path: path.canonicalize().unwrap(), entries, depth }
+        if depth == 0 {
+            directories = directories.into_iter()
+                .filter(|e| e.name != *DATA_NAME && e.path != *DATA)
+                .collect();
+        }
+
+        for e in files.iter() {
+            index.refresh(e.path.clone());
+        }
+
+        Location { path: path.canonicalize().unwrap(), directories, files, depth }
     }
 
     pub fn ascend(&self, index: &mut Index) -> Location {
@@ -142,8 +153,8 @@ impl Location {
     }
 
     pub fn descend(&self, index: &mut Index, i: usize) -> Location {
-        let entry = &self.entries[i];
-        Location::new(index, &entry.path, self.depth + 1)
+        let dir = &self.directories[i];
+        Location::new(index, &dir.path, self.depth + 1)
     }
 }
 
@@ -151,5 +162,4 @@ impl Location {
 pub struct Entry {
     pub name: String,
     pub path: PathBuf,
-    pub is_dir: bool
 }
