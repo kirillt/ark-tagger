@@ -3,21 +3,21 @@ mod selector;
 mod browser;
 
 use crate::model::Model;
-use crate::message::{Message, TaggerMessage, SelectorMessage, BrowserMessage, EntryMessage};
-use crate::query;
+use crate::model::id::Id;
+use crate::message::{Message, TaggerMessage, BrowserMessage, EntryMessage};
 
 use tagger::Tagger;
 use selector::Selector;
 use browser::Browser;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use iced::{
-    Application,
-    Container, Element, Command,
-    Row, Column, Length, Scrollable,
-    Button, Checkbox, Text, TextInput, Color,
-    button, scrollable, text_input,
+    Application, Command,
+    Container, Element,
+    Column, Length,
+    Color,
 };
 
 pub struct RootWidget {
@@ -44,7 +44,25 @@ impl Application for RootWidget {
         println!("Application::update(): {:?}", &msg);
         match msg {
             Message::TaggerMessage(TaggerMessage::TaggingActivated) => {
-                println!("\tTagging {:?} with {:?}", &self.browser.selection, &self.tagger.text);
+                let selection = &self.browser.selection;
+                let entries = &self.model.location.entries;
+                let tag = self.tagger.text.clone();
+                println!("\tTagging {:?} with {:?}", selection, tag);
+
+                let mut paths: Vec<Option<PathBuf>> = entries.iter()
+                    .map(|e| Some(e.path.clone()))
+                    .collect();
+
+                let ids: HashSet<Id> = selection.clone().into_iter().map(|i| {
+                    let path = paths[i].take().unwrap();
+                    println!("\t\t{:?}", &path);
+
+                    self.model.index.refresh(path)
+                }).collect();
+
+                if self.model.database.insert(ids, &tag) {
+                    self.selector.push(tag);
+                }
             },
             Message::TaggerMessage(msg) => {
                 self.tagger.update(msg)
@@ -54,18 +72,17 @@ impl Application for RootWidget {
             },
             Message::BrowserMessage(BrowserMessage::AscendActivated) => {
                 println!("\tAscending");
-                self.model.location = self.model.location.ascend();
+                self.model.location = self.model.location.ascend(&mut self.model.index);
                 self.browser = Browser::new(&self.model.location);
             },
             Message::BrowserMessage(BrowserMessage::EntryMessage(i, EntryMessage::DescendActivated)) => {
                 println!("\tDescending into {}th entry", i);
-                self.model.location = self.model.location.descend(i); 
+                self.model.location = self.model.location.descend(&mut self.model.index, i);
                 self.browser = Browser::new(&self.model.location);
             }
             Message::BrowserMessage(msg) => {
                 self.browser.update(msg)
             },
-            _ => println!("Application received an unexpected message")
         }
 
         Command::none()

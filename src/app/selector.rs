@@ -10,10 +10,12 @@ use std::collections::BTreeSet;
 
 pub struct Selector {
     tags: Vec<TagWidget>,
-    selection: BTreeSet<usize>
+    selection: BTreeSet<usize>,
+    hasher: Box<dyn Hasher>
 }
 
 impl Selector {
+    //todo: selector should depend on Location also
     pub fn new(db: &Database) -> Self {
         let mut hasher = DefaultHasher::new();
 
@@ -22,8 +24,13 @@ impl Selector {
                 .map(|tag| TagWidget::new(tag, &mut hasher))
                 .collect(),
 
-            selection: BTreeSet::new()
+            selection: BTreeSet::new(),
+            hasher: Box::new(hasher)
         }
+    }
+
+    pub fn push(&mut self, tag: Tag) {
+        self.tags.push(TagWidget::new(&tag, &mut self.hasher));
     }
 
     pub fn update(&mut self, msg: SelectorMessage) {
@@ -33,7 +40,6 @@ impl Selector {
                 match &msg {
                     TagMessage::Selected(true) => { self.selection.insert(i); },
                     TagMessage::Selected(false) => { self.selection.remove(&i); },
-                    _ => {}
                 };
                 println!("[ Tags selected: {:?} ]", &self.selection);
 
@@ -41,7 +47,6 @@ impl Selector {
                     tag.update(msg);
                 }
             },
-            _ => println!("Selector received an unexpected message")
         }
     }
 
@@ -80,7 +85,7 @@ impl TagWidget {
         let hash = hasher.finish(); //using the same hasher intentionally
 
         let f32_from_u64 = |x: u64| {
-            255f32 / (x as f32)
+            x as f32 / 255f32
         };
 
         let color = CheckboxColor {
@@ -102,7 +107,6 @@ impl TagWidget {
             TagMessage::Selected(value) => {
                 self.selected = value;
             },
-            _ => println!("TagWidget received an unexpected message")
         }
     }
 

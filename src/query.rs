@@ -1,9 +1,8 @@
-use crate::model::{Model, Id, Index, Bucket, Location, Entry};
-
+use crate::model::{id::Id, Bucket, Entry};
+use crate::ROOT;
 
 use walkdir::WalkDir;
 use crc32fast::Hasher;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
 use std::io::Read;
@@ -43,21 +42,50 @@ pub fn scan_buckets(path: &Path) -> Vec<Bucket> {
 }
 
 pub fn list_entries(path: &Path) -> impl Iterator<Item = Entry> {
+    let prefix_to_strip: Option<&Path> =
+        if path.is_absolute() { Some(&ROOT) }
+        else { None };
+
     fs::read_dir(&path)
         .unwrap()
         .map(|e| e.unwrap())
-        .map(|e| Entry {
-            name: e.file_name().to_str().unwrap().to_owned(),
-            path: e.path(),
-            is_dir: e.file_type().unwrap().is_dir()
+        .map(move |e| {
+            let mut path = e.path();
+            if let Some(root) = prefix_to_strip {
+                path = path.strip_prefix(root).unwrap().to_path_buf();
+            }
+
+            Entry {
+                name: e.file_name().to_str().unwrap().to_owned(),
+                path: path,
+                is_dir: e.file_type().unwrap().is_dir()
+            }
         })
 }
 
-// CRC-32
-// in case of collisions, try sha1
 pub fn id(path: &Path) -> Id {
+    use std::time::Instant;
+
+    println!("\t\tpath = {:?}", path);
     let mut file = File::open(path).unwrap();
 
+    let start = Instant::now();
+    let size = size(&file);
+    println!("\t\t\tsize retrieved in {}ns", start.elapsed().as_nanos());
+
+    let start = Instant::now();
+    let hash = crc32(&mut file);
+    println!("\t\t\thash calculated in {}ns", start.elapsed().as_nanos());
+
+    Id { size, hash }
+}
+
+fn size(file: &File) -> u64 {
+    file.metadata().unwrap().len()
+}
+
+// in case of collisions, try sha1
+fn crc32(file: &mut File) -> u32 {
     let mut hasher = Hasher::new();
     //use reset() method when it will become more serious
 

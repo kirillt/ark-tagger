@@ -55,7 +55,7 @@ impl Browser {
 
     pub fn view(&mut self) -> Element<BrowserMessage> {
         match self {
-            Browser { selection, entries, scroll, asc_button } => {
+            Browser { selection: _, entries, scroll, asc_button } => {
                 debug_assert!(
                     entries.iter()
                         .enumerate().filter_map(|(i, e)| {

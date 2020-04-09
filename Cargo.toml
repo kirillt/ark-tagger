@@ -8,6 +8,8 @@ edition = "2018"
 iced = { git = "https://github.com/hecrj/iced.git", version = "0.1.0-beta", features = ["async-std"] }
 iced_native = { git = "https://github.com/hecrj/iced.git", version = "0.1.0-beta" }
 
+derive_more = "0.99.5"
+
 lazy_static = "1.4.0"
 crc32fast = "1.2.0"
 walkdir = "2"
