@@ -1,4 +1,6 @@
+use crate::model::database::Filter;
 use crate::model::{Location, Entry};
+use crate::model::tag::{Tag, Tags};
 use crate::message::{BrowserMessage, DirMessage, FileMessage};
 
 use iced::{
@@ -7,18 +9,19 @@ use iced::{
     button, scrollable,
 };
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BTreeMap};
 
 pub struct Browser {
-    pub selection: BTreeSet<usize>,
-    dir_widgets: Vec<DirWidget>,
+    filter: Option<Vec<usize>>,
+    selection: BTreeSet<usize>,
     file_widgets: Vec<FileWidget>,
+    dir_widgets: Vec<DirWidget>,
     asc_button: Option<button::State>,
     scroll: scrollable::State,
 }
 
 impl Browser {
-    pub fn new(location: &Location) -> Self {
+    pub fn new(location: &Location, filter: Option<Filter>) -> Self {
         let asc_button = if location.depth > 0 {
             Some(button::State::new())
         } else {
@@ -29,14 +32,30 @@ impl Browser {
             .map(|e| DirWidget::new(e))
             .collect();
 
-        let file_widgets = location.files.iter()
-            .map(|e| FileWidget::new(e))
-            .collect();
+        let (file_widgets, filter) = if let Some(filter) = filter {
+            let file_widgets = location.files.iter()
+                .enumerate()
+                .filter(|(i, _)| filter.contains(i))
+                .map(|(_, e)| FileWidget::new(e))
+                .collect();
+
+            let filter = filter.into_iter().collect();
+            //this vector will be used for restoring original indices
+
+            (file_widgets, Some(filter))
+        } else {
+            let file_widgets = location.files.iter()
+                .map(|e| FileWidget::new(e))
+                .collect();
+
+            (file_widgets, None)
+        };
 
         Browser {
+            filter,
             selection: BTreeSet::new(),
-            dir_widgets,
             file_widgets,
+            dir_widgets,
             asc_button,
             scroll: scrollable::State::new(),
         }
@@ -63,7 +82,7 @@ impl Browser {
 
     pub fn view(&mut self) -> Element<BrowserMessage> {
         match self {
-            Browser { selection: _, dir_widgets, file_widgets, scroll, asc_button } => {
+            Browser { filter: _, selection: _, file_widgets, dir_widgets, scroll, asc_button } => {
                 debug_assert!(
                     file_widgets.iter()
                         .enumerate().filter_map(|(i, e)| {

@@ -35,7 +35,7 @@ impl Application for RootWidget {
         let model = Model::new();
         let tagger = Tagger::new();
         let selector = Selector::new(&model.database);
-        let browser = Browser::new(&model.location);
+        let browser = Browser::new(&model.location, None);
 
         (RootWidget { model, tagger, selector, browser }, Command::none())
     }
@@ -58,7 +58,7 @@ impl Application for RootWidget {
                     let path = file_paths[i].take().unwrap();
                     println!("\t\t{:?}", &path);
 
-                    self.model.index.refresh(path)
+                    self.model.index.provide(&path)
                 }).collect();
 
                 if self.model.database.insert(ids, &tag) {
@@ -69,17 +69,30 @@ impl Application for RootWidget {
                 self.tagger.update(msg)
             },
             Message::SelectorMessage(msg) => {
-                self.selector.update(msg)
+                self.selector.update(msg);
+
+                let selected_tags = self.selector.selection();
+
+                //todo: optimize
+                let paths: Vec<PathBuf> = self.model.location.files.iter()
+                    .map(|e| e.path.clone())
+                    .collect();
+                let ids: Vec<Id> = paths.into_iter()
+                    .map(|path| self.model.index.provide(path.as_path()))
+                    .collect();
+
+                let filter = self.model.database.filter(ids.into_iter(), selected_tags);
+                self.browser = Browser::new(&self.model.location, Some(filter));
             },
             Message::BrowserMessage(BrowserMessage::AscendActivated) => {
                 println!("\tAscending");
                 self.model.location = self.model.location.ascend(&mut self.model.index);
-                self.browser = Browser::new(&self.model.location);
+                self.browser = Browser::new(&self.model.location, None);
             },
             Message::BrowserMessage(BrowserMessage::DirMessage(i, DirMessage::DescendActivated)) => {
                 println!("\tDescending into {}th entry", i);
                 self.model.location = self.model.location.descend(&mut self.model.index, i);
-                self.browser = Browser::new(&self.model.location);
+                self.browser = Browser::new(&self.model.location, None);
             }
             Message::BrowserMessage(msg) => {
                 self.browser.update(msg)

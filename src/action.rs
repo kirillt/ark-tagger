@@ -1,4 +1,4 @@
-use crate::model::{id::Id, Tag};
+use crate::model::{id::Id, tag::Tag};
 
 use crate::DATA;
 

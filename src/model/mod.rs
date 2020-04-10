@@ -1,6 +1,12 @@
 pub mod id;
+pub mod tag;
+pub mod index;
+pub mod database;
 
 use id::Id;
+use tag::Tag;
+use database::Database;
+use index::Index;
 
 use crate::query;
 use crate::action;
@@ -21,96 +27,6 @@ impl Model {
         let location = Location::new(&mut index, &ROOT, 0);
         let database = Database::new(&DATA);
         Model { index, database, location }
-    }
-}
-
-pub type Tag = String;
-
-#[derive(Debug, Clone)]
-pub struct Index {
-    pub id_by_path: HashMap<PathBuf, Option<Id>>,
-    pub path_by_id: HashMap<Id, PathBuf>
-}
-
-impl Index {
-    pub fn new(root: &Path, data: &Path) -> Index {
-        Index {
-            id_by_path: query::list_tree(root, data)
-                .map(|e|
-                    (e.strip_prefix(root).unwrap()
-                      .to_path_buf(),
-                    None))
-                .collect(),
-
-            path_by_id: HashMap::new()
-        }
-    }
-
-    pub fn refresh(&mut self, path: PathBuf) -> Id {
-        let new_id = query::id(&path);
-
-        let old_id2 = self.id_by_path.get(&path);
-        debug_assert!(old_id2.is_some());
-
-        let old_id = self.id_by_path.insert(
-            path.clone(),
-            Some(new_id));
-        debug_assert!(old_id.is_some()); //todo: otherwise, the file is created after start
-        let old_id = old_id.unwrap();
-
-        if let Some(old_id) = old_id {
-            if old_id == new_id {
-                debug_assert_eq!(&self.path_by_id[&old_id], &path);
-                //todo: if paths are different then the file was moved
-            }
-            //todo: other corner cases?
-        }
-
-        let _old_path = self.path_by_id.insert(new_id, path);
-        //todo: should I check paths?
-
-        new_id
-    }
-}
-
-pub struct Database {
-    pub ids_by_tag: HashMap<Tag, HashSet<Id>>,
-}
-
-pub struct Bucket {
-    pub tag: Tag,
-    pub ids: HashSet<Id>
-}
-
-impl Database {
-    pub fn new(path: &Path) -> Self {
-        let mut ids_by_tag = HashMap::new();
-
-        let buckets = query::scan_buckets(&path);
-        for Bucket { tag, ids } in buckets.into_iter() {
-            ids_by_tag.insert(tag.clone(), ids);
-        }
-
-        Database { ids_by_tag }
-    }
-
-    pub fn insert(&mut self, ids: HashSet<Id>, tag: &Tag) -> bool {
-        let mut new_tag = false;
-
-        let bucket: HashSet<Id> = self.ids_by_tag.get(tag)
-            .map(|ids| ids.into_iter().cloned().collect())
-            .unwrap_or_else(|| {
-                new_tag = true;
-                HashSet::new()
-            });
-
-        for id in ids.iter() {
-            action::label(&id, &tag);
-        }
-
-        let bucket: HashSet<Id> = bucket.union(&ids).cloned().collect();
-        self.ids_by_tag.insert(tag.clone(), bucket);
-        new_tag
     }
 }
 
@@ -141,7 +57,7 @@ impl Location {
         }
 
         for e in files.iter() {
-            index.refresh(e.path.clone());
+            index.provide(&e.path);
         }
 
         Location { path: path.canonicalize().unwrap(), directories, files, depth }

@@ -1,4 +1,4 @@
-use crate::model::{id::Id, Bucket, Entry};
+use crate::model::{id::Id, database::Bucket, Entry};
 use crate::ROOT;
 
 use walkdir::WalkDir;

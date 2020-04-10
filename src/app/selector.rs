@@ -1,4 +1,5 @@
-use crate::model::{Tag, Database};
+use crate::model::tag::{Tag, Tags};
+use crate::model::database::Database;
 use crate::message::{SelectorMessage, TagMessage};
 use crate::style::CheckboxColor;
 
@@ -71,10 +72,16 @@ impl Selector {
                     })))
             .into()
     }
+
+    pub fn selection(&self) -> Tags {
+        self.selection.iter()
+            .map(|i| self.tags[*i].tag.clone())
+            .collect()
+    }
 }
 
 pub struct TagWidget {
-    name: String,
+    tag: Tag,
     selected: bool,
     color: CheckboxColor,
 }
@@ -96,7 +103,7 @@ impl TagWidget {
         };
 
         TagWidget {
-            name: tag.to_owned(),
+            tag: tag.to_owned(),
             selected: false,
             color,
         }
@@ -112,7 +119,7 @@ impl TagWidget {
 
     fn view(&mut self) -> Element<TagMessage> {
         Checkbox::new(
-            self.selected, &self.name,
+            self.selected, &self.tag,
             TagMessage::Selected)
                 .style(self.color)
             .into()
