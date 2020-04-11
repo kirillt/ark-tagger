@@ -1,11 +1,13 @@
 use crate::query;
 use crate::action;
 
+use crate::utils::Filter;
+
 use super::id::Id;
 use super::tag::{Tag, HighlightedTag};
 
 use std::path::Path;
-use std::collections::{BTreeMap, HashSet, BTreeSet};
+use std::collections::{BTreeMap, HashSet};
 
 pub struct Database {
     //BTreeMap is used because keys should be sorted when retrieved
@@ -16,8 +18,6 @@ pub struct Bucket {
     pub tag: Tag,
     pub ids: HashSet<Id>
 }
-
-pub type Filter = BTreeSet<usize>;
 
 impl Database {
     pub fn new(path: &Path) -> Self {
@@ -65,14 +65,9 @@ impl Database {
                         .cloned()
                         .collect());
 
-        let mut filter = BTreeSet::new();
-        for (i, id) in ids.iter().enumerate() {
-            if matches.contains(id) {
-                filter.insert(i);
-            }
-        }
-
-        filter
+        ids.iter()
+           .map(|id| matches.contains(id))
+            .collect()
     }
 
     pub fn sieved_tags<I>(&self, ids: I) -> impl Iterator<Item = HighlightedTag>

@@ -3,8 +3,13 @@ mod selector;
 mod browser;
 mod style;
 
-use crate::model::{Model, id::Id, tag::HighlightedTag};
+use crate::model::{
+    Model, id::Id,
+    tag::HighlightedTag,
+    location::Location
+};
 use crate::message::{Message, TaggerMessage, BrowserMessage, DirMessage};
+use crate::utils;
 
 use tagger::Tagger;
 use selector::Selector;
@@ -39,9 +44,12 @@ impl Application for RootWidget {
             .map(|e| index.id_by_path[&e.path].unwrap());
 
         let tags = model.database.sieved_tags(ids);
-
         let selector = Selector::new(tags);
-        let browser = Browser::new(&location, None);
+
+        let browser = Browser::new(
+            &location.directories,
+            location.files.iter(),
+            false);
 
         let tagger = Tagger::new();
 
@@ -90,31 +98,17 @@ impl Application for RootWidget {
             },
             Message::SelectorMessage(msg) => {
                 self.selector.update(msg);
-
-                let location = &mut self.model.location;
-                let index = &mut self.model.index;
-
-                let ids: Vec<Id> = location.files.iter()
-                    .map(|entry| index.provide(entry.path.as_path()))
-                    .collect();
-
-                let filter = self.model.database.filter(ids.iter().copied(), self.selector.selection());
-
-                self.browser = Browser::new(&self.model.location, Some(filter));
-
-                let sieve = self.model.database.sieve(ids.iter().copied());
-
-                self.selector.highlight(sieve);
+                self.update_filter_and_sieve();
             },
             Message::BrowserMessage(BrowserMessage::AscendActivated) => {
                 println!("\tAscending");
-                self.model.location = self.model.location.ascend(&mut self.model.index);
-                self.browser = Browser::new(&self.model.location, None);
+                let location = self.model.location.ascend(&mut self.model.index);
+                self.change_location(location);
             },
             Message::BrowserMessage(BrowserMessage::DirMessage(i, DirMessage::DescendActivated)) => {
                 println!("\tDescending into {}th entry", i);
-                self.model.location = self.model.location.descend(&mut self.model.index, i);
-                self.browser = Browser::new(&self.model.location, None);
+                let location = self.model.location.descend(&mut self.model.index, i);
+                self.change_location(location);
             }
             Message::BrowserMessage(msg) => {
                 self.browser.update(msg)
@@ -141,5 +135,37 @@ impl Application for RootWidget {
             .into();
 
         root.explain(Color::BLACK)
+    }
+}
+
+impl RootWidget {
+    fn change_location(&mut self, location: Location) {
+        let files = vec![];
+        let files = files.iter();
+        //todo: remove this hack
+
+        self.browser = Browser::new(&location.directories, files,location.depth > 0);
+        self.model.location = location;
+        self.update_filter_and_sieve();
+    }
+
+    fn update_filter_and_sieve(&mut self) {
+        let location = &mut self.model.location;
+        let index = &mut self.model.index;
+
+        //todo: ids provision should be in Location
+        //todo: ids and files in location must be synced
+        let files = &location.files;
+        let ids: Vec<Id> = files.iter()
+            .map(|entry| index.provide(entry.path.as_path()))
+            .collect();
+
+        let filter = self.model.database.filter(ids.iter().copied(), self.selector.selection());
+        let filtered_ids = utils::apply_filter(ids.iter(), filter.iter().copied());
+        let sieve = self.model.database.sieve(filtered_ids.copied());
+        self.selector.highlight(sieve);
+
+        let filtered_files = utils::apply_filter(files.iter(), filter.into_iter());
+        self.browser.refresh(filtered_files);
     }
 }

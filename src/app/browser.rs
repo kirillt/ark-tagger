@@ -1,7 +1,4 @@
-use crate::model::{
-    location::{Location, Entry},
-    database::Filter
-};
+use crate::model::location::Entry;
 use crate::message::{BrowserMessage, DirMessage, FileMessage};
 
 use iced::{
@@ -13,7 +10,6 @@ use iced::{
 use std::collections::BTreeSet;
 
 pub struct Browser {
-    filter: Option<Vec<usize>>,
     selection: BTreeSet<usize>,
     file_widgets: Vec<FileWidget>,
     dir_widgets: Vec<DirWidget>,
@@ -22,44 +18,39 @@ pub struct Browser {
 }
 
 impl Browser {
-    pub fn new(location: &Location, filter: Option<Filter>) -> Self {
-        let asc_button = if location.depth > 0 {
+    pub fn new<'a, F>(directories: &Vec<Entry>, files: F, allow_ascend: bool) -> Self
+    where F: Iterator<Item = &'a Entry> {
+        let asc_button = if allow_ascend {
             Some(button::State::new())
         } else {
             None
         };
 
-        let dir_widgets = location.directories.iter()
+        let dir_widgets = directories.iter()
             .map(|e| DirWidget::new(e))
             .collect();
 
-        let (file_widgets, filter) = if let Some(filter) = filter {
-            let file_widgets = location.files.iter()
-                .enumerate()
-                .filter(|(i, _)| filter.contains(i))
-                .map(|(_, e)| FileWidget::new(e))
-                .collect();
-
-            let filter = filter.into_iter().collect();
-            //this vector will be used for restoring original indices
-
-            (file_widgets, Some(filter))
-        } else {
-            let file_widgets = location.files.iter()
-                .map(|e| FileWidget::new(e))
-                .collect();
-
-            (file_widgets, None)
-        };
+        let file_widgets = files
+            .map(|e| FileWidget::new(e))
+            .collect();
 
         Browser {
-            filter,
             selection: BTreeSet::new(),
             file_widgets,
             dir_widgets,
             asc_button,
             scroll: scrollable::State::new(),
         }
+    }
+
+    pub fn refresh<'a, F>(&mut self, files: F)
+        where F: Iterator<Item = &'a Entry> {
+
+        self.file_widgets = files
+            .map(|e| FileWidget::new(e))
+            .collect();
+
+        self.scroll = scrollable::State::new();
     }
 
     pub fn update(&mut self, msg: BrowserMessage) {
@@ -83,7 +74,7 @@ impl Browser {
 
     pub fn view(&mut self) -> Element<BrowserMessage> {
         match self {
-            Browser { filter: _, selection: _, file_widgets, dir_widgets, scroll, asc_button } => {
+            Browser { selection: _, file_widgets, dir_widgets, scroll, asc_button } => {
                 debug_assert!(
                     file_widgets.iter()
                         .enumerate().filter_map(|(i, e)| {
