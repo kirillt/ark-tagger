@@ -4,6 +4,7 @@ use std::string::ToString;
 use std::option::NoneError;
 use std::num::ParseIntError;
 
+//todo: remove necessity in Copy
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Id {
     pub size: u64,

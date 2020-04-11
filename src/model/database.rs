@@ -2,13 +2,17 @@ use crate::query;
 use crate::action;
 
 use super::id::Id;
-use super::tag::{Tag, Tags};
+use super::tag::{Tag, HighlightedTag};
 
-use std::path::{Path, PathBuf};
-use std::collections::{HashMap, HashSet, BTreeSet};
+use std::path::Path;
+use std::collections::{BTreeMap, HashSet, BTreeSet};
+use std::marker::PhantomData;
 
-pub struct Database {
-    pub ids_by_tag: HashMap<Tag, HashSet<Id>>,
+pub struct Database<'a> {
+    //BTreeMap is used because keys should be sorted when retrieved
+    ids_by_tag: BTreeMap<Tag, HashSet<Id>>,
+
+    phantom: PhantomData<&'a ()>
 }
 
 pub struct Bucket {
@@ -18,19 +22,24 @@ pub struct Bucket {
 
 pub type Filter = BTreeSet<usize>;
 
-impl Database {
+//pub type Sieve<'a> = impl Iterator<Item = bool> + 'a;
+//pub type SievedTags<'a> = impl Iterator<Item = HighlightedTag<'a>>;
+
+impl<'a> Database<'a> {
     pub fn new(path: &Path) -> Self {
-        let mut ids_by_tag = HashMap::new();
+        let mut ids_by_tag = BTreeMap::new();
 
         let buckets = query::scan_buckets(&path);
         for Bucket { tag, ids } in buckets.into_iter() {
             ids_by_tag.insert(tag.clone(), ids);
         }
 
-        Database { ids_by_tag }
+        Database { ids_by_tag, phantom: PhantomData }
     }
 
-    pub fn insert(&mut self, ids: HashSet<Id>, tag: &Tag) -> bool {
+    pub fn insert<I>(&mut self, ids: I, tag: &Tag) -> bool
+    where I: Iterator<Item = Id> {
+        let ids: HashSet<Id> = ids.collect();
         let mut new_tag = false;
 
         let bucket: HashSet<Id> = self.ids_by_tag.get(tag)
@@ -50,12 +59,17 @@ impl Database {
     }
 
     //todo: implement union filters and combinations of unions/intersections
-    pub fn filter<I: Iterator<Item = Id>>(&self, ids: I, tags: Tags) -> Filter {
+    pub fn filter<'b, I, T>(&self, ids: I, tags: T) -> Filter
+    where I: Iterator<Item = Id>,
+          T: Iterator<Item = &'b Tag> {
         let ids: Vec<Id> = ids.collect();
 
-        let matches: HashSet<Id> = tags.into_iter()
-            .fold(ids.iter().cloned().collect(), |acc, tag|
-                acc.intersection(&self.ids_by_tag[&tag]).cloned().collect());
+        let matches: HashSet<Id> = tags.fold(
+            ids.iter().cloned().collect(),
+            |acc, tag|
+                    acc.intersection(&self.ids_by_tag[tag])
+                        .cloned()
+                        .collect());
 
         let mut filter = BTreeSet::new();
         for (i, id) in ids.iter().enumerate() {
@@ -65,5 +79,22 @@ impl Database {
         }
 
         filter
+    }
+
+    pub fn sieved_tags<I>(&'a self, ids: I) -> impl Iterator<Item = HighlightedTag<'a>>
+        where I: Iterator<Item = Id> {
+        let ids: HashSet<Id> = ids.collect();
+
+        self.ids_by_tag.iter()
+            .map(move |(tag, bucket)|
+                HighlightedTag {
+                    highlighted: bucket.intersection(&ids).next().is_some(),
+                    tag
+                })
+    }
+
+    pub fn sieve<I: 'a>(&'a self, ids: I) -> impl Iterator<Item = bool> + 'a
+    where I: Iterator<Item = Id> {
+        self.sieved_tags(ids).map(|HighlightedTag { highlighted, tag: _}| highlighted)
     }
 }

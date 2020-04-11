@@ -1,6 +1,7 @@
-use crate::model::database::Filter;
-use crate::model::{Location, Entry};
-use crate::model::tag::{Tag, Tags};
+use crate::model::{
+    location::{Location, Entry},
+    database::Filter
+};
 use crate::message::{BrowserMessage, DirMessage, FileMessage};
 
 use iced::{
@@ -9,7 +10,7 @@ use iced::{
     button, scrollable,
 };
 
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::BTreeSet;
 
 pub struct Browser {
     filter: Option<Vec<usize>>,

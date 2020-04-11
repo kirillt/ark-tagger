@@ -1,16 +1,15 @@
 mod tagger;
 mod selector;
 mod browser;
+mod style;
 
-use crate::model::Model;
-use crate::model::id::Id;
+use crate::model::{Model, id::Id, tag::HighlightedTag};
 use crate::message::{Message, TaggerMessage, BrowserMessage, DirMessage};
 
 use tagger::Tagger;
 use selector::Selector;
 use browser::Browser;
 
-use std::collections::HashSet;
 use std::path::PathBuf;
 
 use iced::{
@@ -20,22 +19,31 @@ use iced::{
     Color,
 };
 
-pub struct RootWidget {
-    model: Model,
+pub struct RootWidget<'a> {
+    model: Model<'a>,
     tagger: Tagger,
     selector: Selector,
     browser: Browser,
 }
 
-impl Application for RootWidget {
+impl<'a> Application for RootWidget<'a> {
     type Executor = iced::executor::Default;
     type Message = Message;
 
     fn new() -> (Self, Command<Message>) {
-        let model = Model::new();
+        let mut model = Model::new();
+        let location = &mut model.location;
+        let index = &mut model.index;
+
+        let ids = location.files.iter()
+            .map(|e| index.id_by_path[&e.path].unwrap());
+
+        let tags = model.database.sieved_tags(ids);
+
+        let selector = Selector::new(tags);
+        let browser = Browser::new(&location, None);
+
         let tagger = Tagger::new();
-        let selector = Selector::new(&model.database);
-        let browser = Browser::new(&model.location, None);
 
         (RootWidget { model, tagger, selector, browser }, Command::none())
     }
@@ -44,25 +52,33 @@ impl Application for RootWidget {
         println!("Application::update(): {:?}", &msg);
         match msg {
             Message::TaggerMessage(TaggerMessage::TaggingActivated) => {
-                let selection = self.browser.take_selection();
+                let files_selection = self.browser.take_selection();
                 let tag = self.tagger.take_tag();
 
-                println!("\tTagging {:?} with {:?}", selection, tag);
+                println!("\tTagging {:?} with {:?}", files_selection, tag);
 
                 let file_entries = &self.model.location.files;
-                let mut file_paths: Vec<Option<PathBuf>> = file_entries.iter()
-                    .map(|e| Some(e.path.clone()))
+                let file_paths: Vec<PathBuf> = file_entries.iter()
+                    .map(|e| e.path.clone())
                     .collect();
 
-                let ids: HashSet<Id> = selection.clone().into_iter().map(|i| {
-                    let path = file_paths[i].take().unwrap();
-                    println!("\t\t{:?}", &path);
+                let index = &mut self.model.index;
+                let database = &mut self.model.database;
 
-                    self.model.index.provide(&path)
-                }).collect();
+                let ids = files_selection.into_iter()
+                    .map(|i| {
+                        let path = &file_paths[i];
+                        println!("\t\t{:?}", &path);
 
-                if self.model.database.insert(ids, &tag) {
-                    self.selector.push(tag);
+                        index.provide(path)
+                    });
+
+                if database.insert(ids, &tag) {
+                    //if we just tagged some file then the tag's bucket is not empty
+                    self.selector.insert(HighlightedTag {
+                        highlighted: true,
+                        tag: &tag
+                    });
                 }
             },
             Message::TaggerMessage(msg) => {
@@ -71,18 +87,20 @@ impl Application for RootWidget {
             Message::SelectorMessage(msg) => {
                 self.selector.update(msg);
 
-                let selected_tags = self.selector.selection();
+                let location = &mut self.model.location;
+                let index = &mut self.model.index;
 
-                //todo: optimize
-                let paths: Vec<PathBuf> = self.model.location.files.iter()
-                    .map(|e| e.path.clone())
-                    .collect();
-                let ids: Vec<Id> = paths.into_iter()
-                    .map(|path| self.model.index.provide(path.as_path()))
+                let ids: Vec<Id> = location.files.iter()
+                    .map(|entry| index.provide(entry.path.as_path()))
                     .collect();
 
-                let filter = self.model.database.filter(ids.into_iter(), selected_tags);
+                let filter = self.model.database.filter(ids.iter().copied(), self.selector.selection());
+
                 self.browser = Browser::new(&self.model.location, Some(filter));
+
+                let sieve = self.model.database.sieve(ids.iter().copied());
+
+                self.selector.highlight(sieve);
             },
             Message::BrowserMessage(BrowserMessage::AscendActivated) => {
                 println!("\tAscending");

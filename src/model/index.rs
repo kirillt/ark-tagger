@@ -4,15 +4,18 @@ use super::id::Id;
 
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]
-pub struct Index {
+pub struct Index<'a> {
     pub id_by_path: HashMap<PathBuf, Option<Id>>,
-    pub path_by_id: HashMap<Id, PathBuf>
+    pub path_by_id: HashMap<Id, PathBuf>,
+
+    phantom: PhantomData<&'a ()>
 }
 
-impl Index {
-    pub fn new(root: &Path, data_dir: &Path) -> Index {
+impl<'a> Index<'a> {
+    pub fn new(root: &Path, data_dir: &Path) -> Index<'a> {
         Index {
             id_by_path: query::list_tree(root, data_dir)
                 .map(|e|
@@ -21,7 +24,9 @@ impl Index {
                      None))
                 .collect(),
 
-            path_by_id: HashMap::new()
+            path_by_id: HashMap::new(),
+
+            phantom: PhantomData
         }
     }
 

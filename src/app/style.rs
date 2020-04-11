@@ -1,14 +1,16 @@
 use iced::{checkbox, Color, Background};
 
 #[derive(Clone, Copy)]
-pub struct CheckboxColor {
-    pub color: Color,
+pub struct TagStyle {
+    pub color: Option<Color>,
 }
 
-impl checkbox::StyleSheet for CheckboxColor {
+impl checkbox::StyleSheet for TagStyle {
     fn active(&self, _is_checked: bool) -> checkbox::Style {
+        let color = self.color.unwrap_or(Color::WHITE);
+
         checkbox::Style {
-            background: Background::Color(Color { a: 0.5, ..self.color }),
+            background: Background::Color(Color { a: 0.5, ..color }),
             checkmark_color: Color::from_rgb(1.0, 0.0, 0.0),
             border_radius: 9,
             border_width: 2,
@@ -17,8 +19,10 @@ impl checkbox::StyleSheet for CheckboxColor {
     }
 
     fn hovered(&self, _is_checked: bool) -> checkbox::Style {
+        let color = self.color.unwrap_or(Color::WHITE);
+
         checkbox::Style {
-            background: Background::Color(self.color),
+            background: Background::Color(color),
             checkmark_color: Color::from_rgb(0.0, 1.0, 0.0),
             border_radius: 9,
             border_width: 2,

@@ -1,5 +1,9 @@
-use crate::model::{id::Id, database::Bucket, Entry};
 use crate::ROOT;
+use crate::model::{
+    id::Id,
+    database::Bucket,
+    location::Entry
+};
 
 use walkdir::WalkDir;
 use crc32fast::Hasher;

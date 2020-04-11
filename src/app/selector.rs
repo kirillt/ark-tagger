@@ -1,37 +1,47 @@
-use crate::model::tag::{Tag, Tags};
-use crate::model::database::Database;
+use crate::model::tag::{Tag, HighlightedTag};
 use crate::message::{SelectorMessage, TagMessage};
-use crate::style::CheckboxColor;
+
+use super::style::TagStyle;
 
 use iced::{Element, Color, Checkbox, Row};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use std::collections::BTreeSet;
-
 pub struct Selector {
-    tags: Vec<TagWidget>,
-    selection: BTreeSet<usize>,
+    tag_widgets: Vec<TagWidget>,
+    selection: Vec<bool>,
     hasher: Box<dyn Hasher>
 }
 
 impl Selector {
-    //todo: selector should depend on Location also
-    pub fn new(db: &Database) -> Self {
+    pub fn new<'a, T>(tags: T) -> Self
+    where T: Iterator<Item = HighlightedTag<'a>> {
         let mut hasher = DefaultHasher::new();
 
-        Selector {
-            tags: db.ids_by_tag.keys()
-                .map(|tag| TagWidget::new(tag, &mut hasher))
-                .collect(),
+        let widgets: Vec<TagWidget> = tags
+            .map(|tag| TagWidget::new(tag, &mut hasher))
+            .collect();
+        let n = widgets.len();
 
-            selection: BTreeSet::new(),
+        Selector {
+            tag_widgets: widgets,
+            selection: vec![false; n],
             hasher: Box::new(hasher)
         }
     }
 
-    pub fn push(&mut self, tag: Tag) {
-        self.tags.push(TagWidget::new(&tag, &mut self.hasher));
+    pub fn insert(&mut self, tag: HighlightedTag) {
+        let pos = self.tag_widgets.iter()
+            .enumerate()
+            .find(|(_, widget)| {
+                debug_assert!(widget.tag != *(tag.tag));
+                widget.tag < *(tag.tag)
+            })
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+
+        self.tag_widgets.insert(pos, TagWidget::new(tag, &mut self.hasher));
+        self.selection.insert(pos, false);
     }
 
     pub fn update(&mut self, msg: SelectorMessage) {
@@ -39,12 +49,11 @@ impl Selector {
         match msg {
             SelectorMessage::TagMessage(i, msg) => {
                 match &msg {
-                    TagMessage::Selected(true) => { self.selection.insert(i); },
-                    TagMessage::Selected(false) => { self.selection.remove(&i); },
+                    TagMessage::Selected(value) => { self.selection[i] = *value; },
                 };
                 println!("[ Tags selected: {:?} ]", &self.selection);
 
-                if let Some(tag) = self.tags.get_mut(i) {
+                if let Some(tag) = self.tag_widgets.get_mut(i) {
                     tag.update(msg);
                 }
             },
@@ -53,15 +62,18 @@ impl Selector {
 
     pub fn view(&mut self) -> Element<SelectorMessage> {
         debug_assert!(
-            self.tags.iter()
-                .enumerate().filter_map(|(i, t)| {
-                    if t.selected { Some(i) } else { None }
-                }).collect::<Vec<usize>>()
+            self.tag_widgets.iter()
+                .enumerate()
+                .filter(|(_, widget)| widget.selected)
+                .map(|(i, _)| i)
+                .collect::<Vec<usize>>()
             == self.selection.iter()
-                .cloned()
+                .enumerate()
+                .filter(|(_, selected)| **selected)
+                .map(|(i, _)| i)
                 .collect::<Vec<usize>>());
 
-        self.tags
+        self.tag_widgets
             .iter_mut()
             .enumerate()
             .fold(Row::new(), |row, (i, tag)|
@@ -73,40 +85,49 @@ impl Selector {
             .into()
     }
 
-    pub fn selection(&self) -> Tags {
+    pub fn highlight<S>(&mut self, sieve: S)
+    where S: Iterator<Item = bool> {
+        self.tag_widgets.iter_mut()
+            .zip(sieve.into_iter())
+            .for_each(|(mut widget, highlighted)| {
+                widget.highlighted = highlighted;
+            })
+    }
+
+    pub fn selection(&self) -> impl Iterator<Item = &Tag> {
         self.selection.iter()
-            .map(|i| self.tags[*i].tag.clone())
-            .collect()
+            .zip(self.tag_widgets.iter())
+            .filter(|(i, _)| **i)
+            .map(|(_, widget)| &widget.tag)
     }
 }
 
 pub struct TagWidget {
     tag: Tag,
     selected: bool,
-    color: CheckboxColor,
+    highlighted: bool,
+    color: Color,
 }
 
 impl TagWidget {
-    fn new<H: Hasher>(tag: &Tag, hasher: &mut H) -> Self {
-        (*tag).hash(hasher);
+    fn new<H: Hasher>(tag: HighlightedTag, hasher: &mut H) -> Self {
+        let HighlightedTag { highlighted, tag } = tag;
+        let tag = tag.to_owned();
+
+        tag.hash(hasher);
         let hash = hasher.finish(); //using the same hasher intentionally
 
         let f32_from_u64 = |x: u64| {
             x as f32 / 255f32
         };
 
-        let color = CheckboxColor {
-            color: Color::from_rgb(
-                f32_from_u64(hash % 256),
-                f32_from_u64((hash << 2) % 256),
-                f32_from_u64((hash << 4) % 256))
-        };
+        let color = Color::from_rgb(
+            f32_from_u64(hash % 256),
+            f32_from_u64((hash << 2) % 256),
+            f32_from_u64((hash << 4) % 256));
 
-        TagWidget {
-            tag: tag.to_owned(),
-            selected: false,
-            color,
-        }
+        let selected = false;
+        TagWidget { tag, selected, highlighted, color }
     }
 
     fn update(&mut self, msg: TagMessage) {
@@ -118,10 +139,12 @@ impl TagWidget {
     }
 
     fn view(&mut self) -> Element<TagMessage> {
+        let color = if self.highlighted { Some(self.color) } else { None };
+
         Checkbox::new(
             self.selected, &self.tag,
             TagMessage::Selected)
-                .style(self.color)
+                .style(TagStyle { color })
             .into()
     }
 }
