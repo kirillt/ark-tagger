@@ -10,13 +10,13 @@ use location::Location;
 
 use crate::{ROOT, DATA};
 
-pub struct Model<'a> {
-    pub index: Index<'a>,
-    pub database: Database<'a>,
+pub struct Model {
+    pub index: Index,
+    pub database: Database,
     pub location: Location,
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub fn new() -> Self {
         let mut index = Index::new(&ROOT, &DATA);
         let location = Location::new(&mut index, &ROOT, 0);

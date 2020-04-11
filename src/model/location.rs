@@ -47,17 +47,6 @@ impl Location {
         let dir = &self.directories[i];
         Location::new(index, &dir.path, self.depth + 1)
     }
-
-//    pub fn ids<'a>(&self, index: &'a Index<'a>) -> impl Iterator<Item = Id> + 'a {
-//        let paths: Vec<PathBuf> = self.files.iter()
-//            .map(|e| e.path.clone())
-//            .collect();
-////        let ids: Vec<Id> = paths.into_iter()
-////            .map(|path| self.model.index.provide(path.as_path()))
-////            .collect();
-//        paths.into_iter()
-//            .map(|path| index.provide(path.as_path()))
-//    }
 }
 
 #[derive(Debug)]

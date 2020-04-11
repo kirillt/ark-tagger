@@ -6,13 +6,10 @@ use super::tag::{Tag, HighlightedTag};
 
 use std::path::Path;
 use std::collections::{BTreeMap, HashSet, BTreeSet};
-use std::marker::PhantomData;
 
-pub struct Database<'a> {
+pub struct Database {
     //BTreeMap is used because keys should be sorted when retrieved
-    ids_by_tag: BTreeMap<Tag, HashSet<Id>>,
-
-    phantom: PhantomData<&'a ()>
+    ids_by_tag: BTreeMap<Tag, HashSet<Id>>
 }
 
 pub struct Bucket {
@@ -22,10 +19,7 @@ pub struct Bucket {
 
 pub type Filter = BTreeSet<usize>;
 
-//pub type Sieve<'a> = impl Iterator<Item = bool> + 'a;
-//pub type SievedTags<'a> = impl Iterator<Item = HighlightedTag<'a>>;
-
-impl<'a> Database<'a> {
+impl Database {
     pub fn new(path: &Path) -> Self {
         let mut ids_by_tag = BTreeMap::new();
 
@@ -34,7 +28,7 @@ impl<'a> Database<'a> {
             ids_by_tag.insert(tag.clone(), ids);
         }
 
-        Database { ids_by_tag, phantom: PhantomData }
+        Database { ids_by_tag }
     }
 
     pub fn insert<I>(&mut self, ids: I, tag: &Tag) -> bool
@@ -81,7 +75,7 @@ impl<'a> Database<'a> {
         filter
     }
 
-    pub fn sieved_tags<I>(&'a self, ids: I) -> impl Iterator<Item = HighlightedTag<'a>>
+    pub fn sieved_tags<I>(&self, ids: I) -> impl Iterator<Item = HighlightedTag>
         where I: Iterator<Item = Id> {
         let ids: HashSet<Id> = ids.collect();
 
@@ -93,7 +87,7 @@ impl<'a> Database<'a> {
                 })
     }
 
-    pub fn sieve<I: 'a>(&'a self, ids: I) -> impl Iterator<Item = bool> + 'a
+    pub fn sieve<'a, I: 'a>(&'a self, ids: I) -> impl Iterator<Item = bool> + 'a
     where I: Iterator<Item = Id> {
         self.sieved_tags(ids).map(|HighlightedTag { highlighted, tag: _}| highlighted)
     }

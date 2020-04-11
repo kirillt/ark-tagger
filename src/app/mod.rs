@@ -19,14 +19,14 @@ use iced::{
     Color,
 };
 
-pub struct RootWidget<'a> {
-    model: Model<'a>,
+pub struct RootWidget {
+    model: Model,
     tagger: Tagger,
     selector: Selector,
     browser: Browser,
 }
 
-impl<'a> Application for RootWidget<'a> {
+impl Application for RootWidget {
     type Executor = iced::executor::Default;
     type Message = Message;
 
@@ -46,6 +46,10 @@ impl<'a> Application for RootWidget<'a> {
         let tagger = Tagger::new();
 
         (RootWidget { model, tagger, selector, browser }, Command::none())
+    }
+
+    fn title(&self) -> String {
+        "Hey there!".to_owned()
     }
 
     fn update(&mut self, msg: Message) -> Command<Message> {
@@ -137,9 +141,5 @@ impl<'a> Application for RootWidget<'a> {
             .into();
 
         root.explain(Color::BLACK)
-    }
-
-    fn title(&self) -> String {
-        "Hey there!".to_owned()
     }
 }
