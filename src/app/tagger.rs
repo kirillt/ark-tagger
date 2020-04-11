@@ -1,19 +1,17 @@
 use crate::message::TaggerMessage;
 
-use iced::{text_input, button, Element, Text, TextInput, Button, Row};
+use iced::{text_input, Element, TextInput};
 
 pub struct Tagger {
     pub text: String,
-    input: text_input::State,
-    button: button::State
+    input: text_input::State
 }
 
 impl Tagger {
     pub fn new() -> Self {
         Tagger {
             text: "".to_owned(),
-            input: text_input::State::focused(),
-            button: button::State::new()
+            input: text_input::State::focused()
         }
     }
 
@@ -25,17 +23,10 @@ impl Tagger {
     }
 
     pub fn view(&mut self) -> Element<TaggerMessage> {
-        let input = TextInput::new(&mut self.input,
-            "What tag do you want to put on your files?",
-            &self.text, TaggerMessage::InputChanged)
-                .on_submit(TaggerMessage::TaggingActivated);
-
-        let button = Button::new(&mut self.button, Text::new("tag!"))
-            .on_press(TaggerMessage::TaggingActivated);
-
-        Row::new()
-            .push(input)
-            .push(button)
+        TextInput::new(&mut self.input,
+                "What tag do you want to put on your files?",
+                &self.text, TaggerMessage::InputChanged)
+            .on_submit(TaggerMessage::TaggingActivated)
             .into()
     }
 

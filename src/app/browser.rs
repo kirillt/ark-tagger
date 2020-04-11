@@ -84,14 +84,6 @@ impl Browser {
                         .cloned()
                         .collect::<Vec<usize>>());
 
-                let button: Element<BrowserMessage> = match asc_button {
-                    Some(state) => Button::new(state, Text::new("up"))
-                        .on_press(BrowserMessage::AscendActivated)
-                        .into(),
-                    None => Text::new("You are in the root directory")
-                        .into()
-                };
-
                 let list = Scrollable::new(scroll);
                 let list = dir_widgets.iter_mut().enumerate().fold(list, |list, (i, dir)| {
                     list.push(dir.view().map(
@@ -102,10 +94,14 @@ impl Browser {
                         move |msg| BrowserMessage::FileMessage(i, msg)))
                 });
 
-                Column::new()
-                    .push(button)
-                    .push(list)
-                    .into()
+                let mut column = Column::new();
+                if let Some(state) = asc_button {
+                    column = column.push(
+                        Button::new(state, Text::new("up"))
+                            .on_press(BrowserMessage::AscendActivated));
+                }
+
+                column.push(list).into()
             }
         }
     }

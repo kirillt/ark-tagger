@@ -20,8 +20,7 @@ use std::path::PathBuf;
 use iced::{
     Application, Command,
     Container, Element,
-    Column, Length,
-    Color,
+    Column, Length
 };
 
 pub struct RootWidget {
@@ -92,9 +91,12 @@ impl Application for RootWidget {
                         tag: &tag
                     });
                 }
+
+                //todo: update only sieve
+                self.update_filter_and_sieve();
             },
             Message::TaggerMessage(msg) => {
-                self.tagger.update(msg)
+                self.tagger.update(msg);
             },
             Message::SelectorMessage(msg) => {
                 self.selector.update(msg);
@@ -123,10 +125,11 @@ impl Application for RootWidget {
                 Column::new()
                     .push(self.tagger.view()
                         .map(|msg| { Message::TaggerMessage(msg) }))
+                    .push(self.browser.view() //todo: scrolling doesn't look working
+                        .map(|msg| { Message::BrowserMessage(msg) }))
                     .push(self.selector.view()
                         .map(|msg| { Message::SelectorMessage(msg) }))
-                    .push(self.browser.view()
-                        .map(|msg| { Message::BrowserMessage(msg) }))
+                    .align_items(iced::Align::Center)
                     .into())
             .width(Length::Fill)
             .height(Length::Fill)
@@ -134,7 +137,12 @@ impl Application for RootWidget {
             .center_y()
             .into();
 
-        root.explain(Color::BLACK)
+        #[cfg(debug_assertions)] {
+            root.explain(iced::Color::BLACK)
+        }
+        #[cfg(not(debug_assertions))] {
+            root
+        }
     }
 }
 

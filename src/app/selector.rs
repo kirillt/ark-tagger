@@ -31,14 +31,15 @@ impl Selector {
     }
 
     pub fn insert(&mut self, tag: HighlightedTag) {
+        let n = self.tag_widgets.len();
         let pos = self.tag_widgets.iter()
             .enumerate()
             .find(|(_, widget)| {
                 debug_assert!(widget.tag != *(tag.tag));
-                widget.tag < *(tag.tag)
+                widget.tag > *(tag.tag)
             })
             .map(|(i, _)| i)
-            .unwrap_or(0);
+            .unwrap_or(n);
 
         self.tag_widgets.insert(pos, TagWidget::new(tag, &mut self.hasher));
         self.selection.insert(pos, false);
