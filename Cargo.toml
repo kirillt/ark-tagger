@@ -5,8 +5,8 @@ authors = ["Kirill Taran <kirill.t256@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-iced = { git = "https://github.com/hecrj/iced.git", version = "0.1.0-beta", features = ["async-std"] }
-iced_native = { git = "https://github.com/hecrj/iced.git", version = "0.1.0-beta" }
+iced = { git = "https://github.com/hecrj/iced.git", version = "0.1", features = ["async-std"] }
+iced_native = { git = "https://github.com/hecrj/iced.git", version = "0.2" }
 derive_more = "0.99.5"
 lazy_static = "1.4.0"
 crc32fast = "1.2.0"

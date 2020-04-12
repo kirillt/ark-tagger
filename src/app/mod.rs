@@ -36,7 +36,9 @@ impl Application for RootWidget {
     type Executor = iced::executor::Default;
     type Message = Message;
 
-    fn new() -> (Self, Command<Message>) {
+    type Flags = ();
+
+    fn new(_: Self::Flags) -> (Self, Command<Message>) {
         let mut model = Model::new();
         let location = &mut model.location;
         let index = &mut model.index;
