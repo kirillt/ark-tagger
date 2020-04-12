@@ -8,7 +8,7 @@ use crate::model::{
     tag::HighlightedTag,
     location::Location
 };
-use crate::message::{Message, TaggerMessage, BrowserMessage, DirMessage};
+use crate::message::{Message, TaggerMessage, BrowserMessage, FileMessage, DirMessage};
 use crate::utils;
 
 use tagger::Tagger;
@@ -112,6 +112,10 @@ impl Application for RootWidget {
                 let location = self.model.location.descend(&mut self.model.index, i);
                 self.change_location(location);
             }
+            Message::BrowserMessage(BrowserMessage::FileMessage(i, FileMessage::ExecuteActivated)) => {
+                println!("\tActivating {}th file", i);
+                self.model.location.activate(i);
+            },
             Message::BrowserMessage(msg) => {
                 self.browser.update(msg)
             },

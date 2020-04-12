@@ -38,6 +38,7 @@ dependencies = [
  "iced",
  "iced_native",
  "lazy_static",
+ "opener",
  "walkdir",
 ]
 
@@ -1316,6 +1317,15 @@ name = "once_cell"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c601810575c99596d4afc46f78a678c80105117c379eb3650cf99b8a21ce5b"
+
+[[package]]
+name = "opener"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13117407ca9d0caf3a0e74f97b490a7e64c0ae3aa90a8b7085544d0c37b6f3ae"
+dependencies = [
+ "winapi 0.3.8",
+]
 
 [[package]]
 name = "ordered-float"

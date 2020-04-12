@@ -40,12 +40,22 @@ impl Location {
 
     pub fn ascend(&self, index: &mut Index) -> Location {
         assert!(self.depth > 0);
-        Location::new(index,self.path.parent().unwrap(), self.depth - 1)
+
+        let parent = self.path.parent().unwrap();
+        println!("\t\tpath: {:?}", parent);
+        Location::new(index,parent, self.depth - 1)
     }
 
     pub fn descend(&self, index: &mut Index, i: usize) -> Location {
-        let dir = &self.directories[i];
-        Location::new(index, &dir.path, self.depth + 1)
+        let directory = &self.directories[i].path;
+        println!("\t\tpath: {:?}", directory);
+        Location::new(index, directory, self.depth + 1)
+    }
+
+    pub fn activate(&self, i: usize) {
+        let path = &self.files[i].path;
+        println!("\t\tpath {:?}", path);
+        opener::open(path).unwrap();
     }
 }
 
