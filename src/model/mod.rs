@@ -18,7 +18,7 @@ pub struct Model {
 
 impl Model {
     pub fn new() -> Self {
-        let mut index = Index::new(&ROOT, &DATA);
+        let mut index = Index::new();
         let location = Location::new(&mut index, &ROOT, 0);
         let database = Database::new(&DATA);
         Model { index, database, location }

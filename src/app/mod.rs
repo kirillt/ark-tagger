@@ -44,7 +44,7 @@ impl Application for RootWidget {
         let index = &mut model.index;
 
         let ids = location.files.iter()
-            .map(|e| index.id_by_path[&e.path].unwrap());
+            .map(|e| index.id(&e.path));
 
         let tags = model.database.sieved_tags(ids);
         let selector = Selector::new(tags);
@@ -85,7 +85,7 @@ impl Application for RootWidget {
                         let path = &file_paths[i];
                         println!("\t\t{:?}", &path);
 
-                        index.provide(path)
+                        index.id(path)
                     });
 
                 if database.insert(ids, &tag) {
@@ -165,6 +165,8 @@ impl RootWidget {
         self.update_filter_and_sieve();
     }
 
+    //todo: highlight directories with matching files
+    //todo: directories with matching files should also affect highlighted tags
     fn update_filter_and_sieve(&mut self) {
         let location = &mut self.model.location;
         let index = &mut self.model.index;
@@ -173,7 +175,7 @@ impl RootWidget {
         //todo: ids and files in location must be synced
         let files = &location.files;
         let ids: Vec<Id> = files.iter()
-            .map(|entry| index.provide(entry.path.as_path()))
+            .map(|entry| index.id(entry.path.as_path()))
             .collect();
 
         let filter = self.model.database.filter(ids.iter().copied(), self.selector.selection());

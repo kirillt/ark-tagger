@@ -39,7 +39,6 @@ dependencies = [
  "iced_native",
  "lazy_static",
  "opener",
- "walkdir",
 ]
 
 [[package]]
