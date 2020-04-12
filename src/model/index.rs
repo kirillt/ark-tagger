@@ -1,4 +1,4 @@
-use crate::query;
+use crate::fs::query;
 
 use super::id::Id;
 

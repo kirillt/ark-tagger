@@ -1,5 +1,6 @@
 use crate::model::location::Entry;
-use crate::message::{BrowserMessage, DirMessage, FileMessage};
+
+use super::message::{BrowserMessage, DirMessage, FileMessage};
 
 use iced::{
     Element, Row, Column, Length,

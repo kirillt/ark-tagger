@@ -1,6 +1,6 @@
 use crate::model::tag::{Tag, HighlightedTag};
-use crate::message::{SelectorMessage, TagMessage};
 
+use super::message::{SelectorMessage, TagMessage};
 use super::style::TagStyle;
 
 use iced::{Element, Color, Checkbox, Row};

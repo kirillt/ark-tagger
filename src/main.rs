@@ -2,10 +2,8 @@
 
 mod app;
 mod model;
-mod query;
-mod action;
-mod message;
 mod utils;
+mod fs;
 
 #[macro_use]
 extern crate lazy_static;

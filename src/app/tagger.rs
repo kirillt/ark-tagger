@@ -1,4 +1,4 @@
-use crate::message::TaggerMessage;
+use super::message::TaggerMessage;
 
 use iced::{text_input, Element, TextInput};
 

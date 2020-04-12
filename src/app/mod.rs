@@ -1,6 +1,7 @@
 mod tagger;
 mod selector;
 mod browser;
+mod message;
 mod style;
 
 use crate::model::{
@@ -8,8 +9,9 @@ use crate::model::{
     tag::HighlightedTag,
     location::Location
 };
-use crate::message::{Message, TaggerMessage, BrowserMessage, FileMessage, DirMessage};
 use crate::utils;
+
+use message::{Message, TaggerMessage, BrowserMessage, FileMessage, DirMessage};
 
 use tagger::Tagger;
 use selector::Selector;

@@ -1,5 +1,5 @@
 use crate::{DATA, DATA_NAME};
-use crate::query;
+use crate::fs::query;
 
 use super::index::Index;
 
@@ -27,7 +27,8 @@ impl Location {
 
         if depth == 0 {
             directories = directories.into_iter()
-                .filter(|e| e.name != *DATA_NAME && e.path != *DATA)
+                .filter(|e| !e.name.starts_with('.') &&
+                    e.name != *DATA_NAME && e.path != *DATA)
                 .collect();
         }
 
