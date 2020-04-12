@@ -9,7 +9,7 @@ use walkdir::WalkDir;
 use crc32fast::Hasher;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File};
-use std::io::Read;
+use std::io::{Read, ErrorKind};
 
 pub fn list_tree(root: &Path, data: &Path) -> impl Iterator<Item = PathBuf> {
     let data = data.to_path_buf();
@@ -25,24 +25,39 @@ pub fn list_tree(root: &Path, data: &Path) -> impl Iterator<Item = PathBuf> {
 }
 
 pub fn scan_buckets(path: &Path) -> Vec<Bucket> {
-    fs::read_dir(&path)
-        .unwrap()
-        .map(|e| e.unwrap())
-        .map(|e| {
-            assert!(e.file_type().unwrap().is_dir());
-            let ids = fs::read_dir(e.path())
-                .unwrap()
+    let directory = fs::read_dir(&path);
+
+    match directory {
+        Err(error) => {
+            match error.kind() {
+                ErrorKind::NotFound => {
+                    println!("This is, apparently, fresh directory since the data folder doesn't exist");
+                    return vec![];
+                },
+                _ => panic!(error.to_string())
+            }
+        },
+
+        Ok(directory) => {
+            directory
                 .map(|e| e.unwrap())
                 .map(|e| {
-                    assert!(!e.file_type().unwrap().is_dir());
-                    e.file_name().to_str().unwrap().parse::<Id>().unwrap()
-                })
-                .collect();
+                    assert!(e.file_type().unwrap().is_dir());
+                    let ids = fs::read_dir(e.path())
+                        .unwrap()
+                        .map(|e| e.unwrap())
+                        .map(|e| {
+                            assert!(!e.file_type().unwrap().is_dir());
+                            e.file_name().to_str().unwrap().parse::<Id>().unwrap()
+                        })
+                        .collect();
 
-            let tag = e.file_name().into_string().unwrap();
-            Bucket { tag, ids }
-        })
-        .collect()
+                    let tag = e.file_name().into_string().unwrap();
+                    Bucket { tag, ids }
+                })
+                .collect()
+        }
+    }
 }
 
 pub fn list_entries(path: &Path) -> impl Iterator<Item = (bool, Entry)> {

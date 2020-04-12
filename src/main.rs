@@ -18,6 +18,7 @@ lazy_static! {
     static ref ROOT: PathBuf =
         env::current_dir().unwrap()
             .canonicalize().unwrap();
+    //todo: multi-root support with root picker
 
     static ref DATA: PathBuf = {
         let mut path = ROOT.clone();
