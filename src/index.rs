@@ -1,7 +1,6 @@
-use crate::fs::query;
+use crate::file;
+use crate::model::id::Id;
 use crate::utils::measure;
-
-use super::id::Id;
 
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
@@ -13,7 +12,7 @@ pub struct Index {
 }
 
 impl Index {
-    pub fn new() -> Index {
+    pub fn new(_path: PathBuf) -> Index {
         Index {
             id_by_path: HashMap::new(),
             path_by_id: HashMap::new()
@@ -21,8 +20,7 @@ impl Index {
     }
 
     pub fn provide(&mut self, path: &Path) {
-        let id = measure("id", ||
-            query::id(path));
+        let id = measure("id", || file::id(path));
 
         measure("index.id.insertion", ||
             self.id_by_path.insert(path.to_path_buf(), id));
