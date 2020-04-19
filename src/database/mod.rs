@@ -49,6 +49,7 @@ impl Database {
         }
     }
 
+    //todo: implement inversion and "fresh" pseudo-tag
     //todo: implement union filters and combinations of unions/intersections
     pub fn filter<'b, I, T>(&self, ids: I, tags: T) -> Filter
         where I: Iterator<Item = Id>,

@@ -1,6 +1,9 @@
-use crate::model::location::Entry;
-
+use crate::model::entry::{DirEntry, FileEntry};
 use super::message::{BrowserMessage, DirMessage, FileMessage};
+
+use number_prefix::NumberPrefix;
+use chrono::offset::Utc;
+use chrono::DateTime;
 
 use iced::{
     Element, Row, Column, Length,
@@ -19,8 +22,8 @@ pub struct Browser {
 }
 
 impl Browser {
-    pub fn new<'a, F>(directories: &Vec<Entry>, files: F, allow_ascend: bool) -> Self
-    where F: Iterator<Item = &'a Entry> {
+    pub fn new<'a, F>(directories: &Vec<DirEntry>, files: F, allow_ascend: bool) -> Self
+    where F: Iterator<Item = &'a FileEntry> {
         let asc_button = if allow_ascend {
             Some(button::State::new())
         } else {
@@ -45,7 +48,7 @@ impl Browser {
     }
 
     pub fn refresh<'a, F>(&mut self, files: F)
-        where F: Iterator<Item = &'a Entry> {
+        where F: Iterator<Item = &'a FileEntry> {
 
         self.file_widgets = files
             .map(|e| FileWidget::new(e))
@@ -124,14 +127,8 @@ struct DirWidget {
     descend_button: button::State,
 }
 
-struct FileWidget {
-    name: String,
-    selected: bool,
-    open_button: button::State,
-}
-
 impl DirWidget {
-    fn new(entry: &Entry) -> Self {
+    fn new(entry: &DirEntry) -> Self {
         DirWidget {
             name: entry.name.clone(),
             descend_button: button::State::new(),
@@ -153,10 +150,32 @@ impl DirWidget {
     }
 }
 
+struct FileWidget {
+    name: String,
+    meta: String,
+    selected: bool,
+    open_button: button::State,
+}
+
 impl FileWidget {
-    fn new(entry: &Entry) -> Self {
+    fn new(entry: &FileEntry) -> Self {
+        let date: DateTime<Utc> = entry.modified.clone().into();
+
+        let size = match NumberPrefix::decimal(entry.size as f64) {
+            NumberPrefix::Standalone(bytes) => {
+                format!("{} bytes", bytes)
+            }
+            NumberPrefix::Prefixed(prefix, n) => {
+                format!("{:.1} {}B", n, prefix)
+            }
+        };
+
+        let meta = format!("size: {}\nmodified: {}",
+           size, date.format("%d/%m/%Y %T"));
+
         FileWidget {
             name: entry.name.clone(),
+            meta,
             selected: false,
             open_button: button::State::new(),
         }
@@ -177,12 +196,18 @@ impl FileWidget {
             FileMessage::Selected)
             .width(Length::Fill);
 
+        let mut info = Column::new();
+        for line in (&self.meta).split('\n') {
+            info = info.push(Text::new(line.clone()).size(10));
+        }
+
         let button =
             Button::new(&mut self.open_button, Text::new("open"))
                 .on_press(FileMessage::ExecuteActivated);
 
         Row::new()
             .push(checkbox)
+            .push(info)
             .push(button)
             .into()
     }

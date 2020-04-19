@@ -1,5 +1,6 @@
 pub mod id;
 pub mod tag;
+pub mod entry;
 pub mod location;
 
 use crate::database::Database;

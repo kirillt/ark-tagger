@@ -1,17 +1,12 @@
+use super::entry::{DirEntry, FileEntry};
 use crate::index::Index;
 
 use std::path::{Path, PathBuf};
 use std::fs;
 
-#[derive(Debug)]
-pub struct Entry {
-    pub name: String,
-    pub path: PathBuf,
-}
-
 pub struct Location {
-    pub directories: Vec<Entry>,
-    pub files: Vec<Entry>,
+    pub directories: Vec<DirEntry>,
+    pub files: Vec<FileEntry>,
     pub depth: usize,
 
     ignores: Vec<String>,
@@ -58,7 +53,8 @@ impl Location {
     }
 
     pub fn descend(&self, index: &mut Index, i: usize) -> Self {
-        let target = &self.directories[i].path;
+        let target: &DirEntry = &self.directories[i];
+        let target = &target.path;
         println!("\t\tpath: {:?}", target);
 
         let (directories, files) = Self::list_entries(&target, None);
@@ -82,7 +78,7 @@ impl Location {
         opener::open(path).unwrap();
     }
 
-    fn list_entries(path: &Path, ignores: Option<&Vec<String>>) -> (Vec<Entry>, Vec<Entry>) {
+    fn list_entries(path: &Path, ignores: Option<&Vec<String>>) -> (Vec<DirEntry>, Vec<FileEntry>) {
         let entries = fs::read_dir(&path)
             .unwrap()
             .map(|entry| entry.unwrap())
@@ -93,21 +89,38 @@ impl Location {
                         .unwrap_or(false) {
                     None
                 } else {
-                    let is_dir = entry.file_type().unwrap().is_dir();
-                    Some((is_dir, Entry { name, path: entry.path() }))
+                    if entry.file_type().unwrap().is_dir() {
+                        Some(Entry::Dir(DirEntry { name, path: entry.path() }))
+                    } else {
+                        let path = entry.path();
+                        let meta = entry.metadata().unwrap();
+
+                        Some(Entry::File(FileEntry {
+                            name,
+                            path,
+
+                            size: meta.len(),
+                            created: meta.created().unwrap(),
+                            modified: meta.modified().unwrap(),
+                            accessed: meta.accessed().unwrap()
+                        }))
+                    }
                 }
             });
 
         let mut directories = vec![];
         let mut files = vec![];
-        for (is_dir, entry) in entries {
-            if is_dir {
-                directories.push(entry);
-            } else {
-                files.push(entry);
+        for entry in entries {
+            match entry {
+                Entry::Dir(entry) => directories.push(entry),
+                Entry::File(entry) => files.push(entry)
             }
         }
-
         (directories, files)
     }
+}
+
+enum Entry {
+    Dir(DirEntry),
+    File(FileEntry)
 }
