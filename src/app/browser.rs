@@ -1,5 +1,6 @@
 use crate::model::entry::{DirEntry, FileEntry};
 use super::message::{BrowserMessage, DirMessage, FileMessage};
+use super::order::Order;
 
 use number_prefix::NumberPrefix;
 use chrono::offset::Utc;
@@ -7,18 +8,21 @@ use chrono::DateTime;
 
 use iced::{
     Element, Row, Column, Length,
-    Scrollable, Button, Checkbox, Text, 
+    Scrollable, Button, Checkbox, Radio, Text,
     button, scrollable,
 };
 
 use std::collections::BTreeSet;
 
 pub struct Browser {
+    order: Order,
+    ordering: Option<Vec<usize>>,
     selection: BTreeSet<usize>,
     file_widgets: Vec<FileWidget>,
     dir_widgets: Vec<DirWidget>,
     asc_button: Option<button::State>,
-    scroll: scrollable::State,
+    dir_scroll: scrollable::State,
+    file_scroll: scrollable::State,
 }
 
 impl Browser {
@@ -39,22 +43,45 @@ impl Browser {
             .collect();
 
         Browser {
+            order: Order::AsIs,
+            ordering: None,
             selection: BTreeSet::new(),
             file_widgets,
             dir_widgets,
             asc_button,
-            scroll: scrollable::State::new(),
+            dir_scroll: scrollable::State::new(),
+            file_scroll: scrollable::State::new(),
         }
     }
 
     pub fn refresh<'a, F>(&mut self, files: F)
         where F: Iterator<Item = &'a FileEntry> {
 
-        self.file_widgets = files
-            .map(|e| FileWidget::new(e))
-            .collect();
+        if self.order != Order::AsIs {
+            println!("\tBuffering and ordering entries");
 
-        self.scroll = scrollable::State::new();
+            let mut files: Vec<(usize, &FileEntry)> = files.enumerate().collect();
+            files.sort_by_key(|(_, file)| match self.order {
+                Order::BySize => file.size,
+                Order::ByCreatedDate => file.created_secs(),
+                Order::ByModifiedDate => file.modified_secs(),
+                Order::ByAccessedDate => file.accessed_secs(),
+                _ => panic!("redundant buffering")
+            });
+            let (ordering, files): (Vec<_>, Vec<_>) = files.into_iter().unzip();
+            self.ordering = Some(ordering);
+
+            self.file_widgets = files
+                .into_iter()
+                .map(|e| FileWidget::new(e))
+                .collect();
+        } else {
+            self.file_widgets = files
+                .map(|e| FileWidget::new(e))
+                .collect();
+        };
+
+        self.file_scroll = scrollable::State::new();
     }
 
     pub fn update(&mut self, msg: BrowserMessage) {
@@ -72,13 +99,25 @@ impl Browser {
                     file_widget.update(msg);
                 }
             },
+            BrowserMessage::OrderSelected(order) => {
+                self.order = order;
+            },
             _ => println!("Browser received an unexpected message")
         }
     }
 
     pub fn view(&mut self) -> Element<BrowserMessage> {
         match self {
-            Browser { selection: _, file_widgets, dir_widgets, scroll, asc_button } => {
+            Browser {
+                order,
+                ordering: _,
+                selection: _,
+                file_widgets,
+                dir_widgets,
+                asc_button,
+                dir_scroll,
+                file_scroll,
+            } => {
                 debug_assert!(
                     file_widgets.iter()
                         .enumerate().filter_map(|(i, e)| {
@@ -88,37 +127,64 @@ impl Browser {
                         .cloned()
                         .collect::<Vec<usize>>());
 
-                let list = Scrollable::new(scroll);
-                let list = dir_widgets.iter_mut().enumerate().fold(list, |list, (i, dir)| {
+                let directories = Scrollable::new(dir_scroll);
+                let directories = dir_widgets.iter_mut().enumerate().fold(directories, |list, (i, dir)| {
                     list.push(dir.view().map(
                         move |msg| BrowserMessage::DirMessage(i, msg)))
                 });
-                let list = file_widgets.iter_mut().enumerate().fold(list, |list, (i, file)| {
+
+                let files = Scrollable::new(file_scroll);
+                let files = file_widgets.iter_mut().enumerate().fold(files, |list, (i, file)| {
                     list.push(file.view().map(
                         move |msg| BrowserMessage::FileMessage(i, msg)))
                 });
 
+                let order_selector = Order::all().iter().cloned().fold(
+                Row::new(), |choices, (option, label)| {
+                    choices.push(Radio::new(
+                        option,
+                        label.to_owned(),
+                        Some(*order),
+                        BrowserMessage::OrderSelected))
+                });
+
                 let mut column = Column::new();
+
                 if let Some(state) = asc_button {
                     column = column.push(
                         Button::new(state, Text::new("up"))
                             .on_press(BrowserMessage::AscendActivated));
                 }
-
-                column.push(list).into()
+                column
+                    .push(directories)
+                    .push(order_selector)
+                    .push(files)
+                    .height(Length::Fill)
+                    .into()
             }
         }
     }
 
-    pub fn take_selection(&mut self) -> BTreeSet<usize> {
+    //the return selection is converted according selected Order
+    pub fn take_model_selection(&mut self) -> BTreeSet<usize> {
         let result = self.selection.clone();
         self.selection = BTreeSet::new();
+        //todo: optimize
 
         for file in self.file_widgets.iter_mut() {
             file.selected = false;
         }
 
-        result
+        if let Some(ordering) = &self.ordering {
+            let result: BTreeSet<usize> = result.into_iter()
+                .map(|i| ordering[i])
+                .collect();
+
+            self.ordering = None; //todo: is it really should be used only once?
+            result
+        } else {
+            result
+        }
     }
 }
 

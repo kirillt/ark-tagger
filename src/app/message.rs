@@ -1,3 +1,5 @@
+use super::order::Order;
+
 #[derive(Debug, Clone)]
 pub enum Message {
     TaggerMessage(TaggerMessage),
@@ -16,6 +18,7 @@ pub enum BrowserMessage {
     AscendActivated,
     DirMessage(usize, DirMessage),
     FileMessage(usize, FileMessage),
+    OrderSelected(Order)
 }
 
 #[derive(Debug, Clone)]

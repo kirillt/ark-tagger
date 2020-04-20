@@ -2,6 +2,7 @@ mod tagger;
 mod selector;
 mod browser;
 mod message;
+mod order;
 mod style;
 
 use crate::model::{
@@ -67,7 +68,7 @@ impl Application for RootWidget {
         println!("Application::update(): {:?}", &msg);
         match msg {
             Message::TaggerMessage(TaggerMessage::TaggingActivated) => {
-                let files_selection = self.browser.take_selection();
+                let files_selection = self.browser.take_model_selection();
                 let tag = self.tagger.take_tag();
 
                 println!("\tTagging {:?} with {:?}", files_selection, tag);
@@ -120,6 +121,10 @@ impl Application for RootWidget {
                 println!("\tActivating {}th file", i);
                 self.model.location.activate(i);
             },
+            Message::BrowserMessage(BrowserMessage::OrderSelected(order)) => {
+                self.browser.update(BrowserMessage::OrderSelected(order));
+                self.update_filter_and_sieve(); //todo: this is a hack to cause refresh() with proper entries
+            },
             Message::BrowserMessage(msg) => {
                 self.browser.update(msg)
             },
@@ -131,12 +136,12 @@ impl Application for RootWidget {
     fn view(&mut self) -> Element<Message> {
         let root: Element<Message> = Container::new::<Element<Message>>(
                 Column::new()
-                    .push(self.tagger.view()
-                        .map(|msg| { Message::TaggerMessage(msg) }))
                     .push(self.browser.view() //todo: scrolling doesn't look working
                         .map(|msg| { Message::BrowserMessage(msg) }))
                     .push(self.selector.view()
                         .map(|msg| { Message::SelectorMessage(msg) }))
+                    .push(self.tagger.view()
+                        .map(|msg| { Message::TaggerMessage(msg) }))
                     .align_items(iced::Align::Center)
                     .into())
             .width(Length::Fill)
